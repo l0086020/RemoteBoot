@@ -1,4 +1,4 @@
-# Remote-Boot-Card
+# RemoteBoot
 - 电脑远程开机卡
 
 # releases v1.0.0
