@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include <Blinker.h>
+#include <Ticker.h>
 
 typedef enum
 {

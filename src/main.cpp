@@ -3,22 +3,26 @@
 #include "main.h"
 
 //开关按键引脚
-const int SwitchKey = 4;
+const int SwitchKey = 12;
 //开关按键引脚
-const int ResetKey = 5;
-
+const int ResetKey = 13;
 //状态检测引脚
-const int PowerState = 12;
+const int PowerState = 14;
 
-char auth[] = "";
-char ssid[] = "";
-char pswd[] = "";
+char auth[] = "282b932d6b07";
+char ssid[] = "JMZN-NO.1";
+char pswd[] = "JMZN@20170620";
+// char ssid[] = "iPhone";
+// char pswd[] = "321162955";
 
+Ticker timer1;
 BlinkerButton Button1("PowerKey");
 BlinkerButton Button2("ResetKey");
 
 /* 电源状态检测变量 */
 uint8_t PowerDetState = 0;
+/* 定时器中断标志位 */
+uint8_t TimerFlag = 0;
 
 void heartbeat(void);
 
@@ -102,8 +106,18 @@ void Button1Callback(const String & state)
 void Button2Callback(const String & state)
 {
   /* 发送弹窗提醒 */
-  Blinker.notify("Unused");
+  Blinker.notify("Wait for the system to restart");
   Blinker.vibrate(500);
+  PowerSwitchOut(PowerReset);
+  Blinker.delay(500);
+}
+
+void BuiltinSwitch(const String & state)
+{
+  if(state == "on" || state == "off")
+  {
+    PowerSwitchOut(PowerSwitch);
+  }
 }
 
 /**
@@ -118,15 +132,17 @@ void heartbeat()
 {
   if (digitalRead(PowerState) == HIGH)
   {
-    Button1.icon("fal fa-toggle-on");
+    Button1.color("#00AA00");
     Button1.text("ON");
     Button1.print("on");
+    BUILTIN_SWITCH.print("on");
   }
   else if (digitalRead(PowerState) == LOW)
   {
-    Button1.icon("fal fa-toggle-off");
+    Button1.color("#FF0000");
     Button1.text("OFF");
     Button1.print("off");
+    BUILTIN_SWITCH.print("off");
   }
 }
 
@@ -144,6 +160,19 @@ ICACHE_RAM_ATTR void Funcation()
   heartbeat();
 }
 
+/**
+  * @file    main.cpp
+  * @brief   定时器中断服务函数
+  * @param   None
+  * @return  None
+  * @version v1.0.0
+  * @date    2024-02-23
+  */
+void TIMER_PeriodElapsedCallback(void)
+{
+  TimerFlag = 1;
+}
+
 
 /**
   * @file    main.cpp
@@ -155,26 +184,39 @@ ICACHE_RAM_ATTR void Funcation()
   */
 void setup()
 {
-    pinMode(PowerState, INPUT);
-    pinMode(SwitchKey, OUTPUT);
-    pinMode(LED_BUILTIN, OUTPUT);
+  /* GPIO初始化 */
+  pinMode(PowerState, INPUT_PULLUP);
+  pinMode(SwitchKey, OUTPUT);
+  pinMode(ResetKey, OUTPUT);
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, HIGH);
+  digitalWrite(SwitchKey, LOW);
+  digitalWrite(ResetKey, LOW);
 
-    for(uint8_t i=0; i<5; i++)
-    {
-      digitalWrite(LED_BUILTIN, LOW);
-      delay(200);
-      digitalWrite(LED_BUILTIN, HIGH);
-      delay(200);
-    }
+  /* Blinker组件初始化 */
+  Blinker.begin(auth, ssid, pswd);
+  Button1.attach(Button1Callback);
+  Button2.attach(Button2Callback);
+  BUILTIN_SWITCH.attach(BuiltinSwitch);
+  Blinker.attachHeartbeat(heartbeat);
+
+  /* 判断连接是否成功 */
+  while(!Blinker.connected())
+  {
     digitalWrite(LED_BUILTIN, LOW);
-    digitalWrite(SwitchKey, LOW);
+    Blinker.delay(200);
+    digitalWrite(LED_BUILTIN, HIGH);
+    Blinker.delay(200);
+  }
 
-    Blinker.begin(auth, ssid, pswd);
-    Button1.attach(Button1Callback);
-    Button2.attach(Button2Callback);
-    Blinker.attachHeartbeat(heartbeat);
+  /* 成功后LED灯常亮 */
+  digitalWrite(LED_BUILTIN, LOW);
 
-    attachInterrupt(digitalPinToInterrupt(12), Funcation, CHANGE);
+  /* 开启外部中断功能 */
+  attachInterrupt(digitalPinToInterrupt(PowerState), Funcation, CHANGE);
+
+  /* 开启定时器中断 周期2秒 用于连接状态检测 */
+  timer1.attach(2, TIMER_PeriodElapsedCallback);
 }
 
 
@@ -188,5 +230,13 @@ void setup()
   */
 void loop()
 {
-    Blinker.run();
+  /* Blinker主函数 */
+  Blinker.run();
+  
+  /* 每2秒判断一次设备连接状态 */
+  if(TimerFlag)
+  {
+    Blinker.connected() ? digitalWrite(LED_BUILTIN, LOW) : digitalWrite(LED_BUILTIN, HIGH);
+    TimerFlag = 0;
+  }
 }
