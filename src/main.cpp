@@ -10,10 +10,8 @@ const int ResetKey = 13;
 const int PowerState = 14;
 
 char auth[] = "282b932d6b07";
-char ssid[] = "JMZN-NO.1";
-char pswd[] = "JMZN@20170620";
-// char ssid[] = "iPhone";
-// char pswd[] = "321162955";
+char ssid[] = "iPhone";
+char pswd[] = "321162955";
 
 Ticker timer1;
 BlinkerButton Button1("PowerKey");
@@ -200,23 +198,11 @@ void setup()
   BUILTIN_SWITCH.attach(BuiltinSwitch);
   Blinker.attachHeartbeat(heartbeat);
 
-  /* 判断连接是否成功 */
-  while(!Blinker.connected())
-  {
-    digitalWrite(LED_BUILTIN, LOW);
-    Blinker.delay(200);
-    digitalWrite(LED_BUILTIN, HIGH);
-    Blinker.delay(200);
-  }
-
-  /* 成功后LED灯常亮 */
-  digitalWrite(LED_BUILTIN, LOW);
-
   /* 开启外部中断功能 */
   attachInterrupt(digitalPinToInterrupt(PowerState), Funcation, CHANGE);
 
-  /* 开启定时器中断 周期2秒 用于连接状态检测 */
-  timer1.attach(2, TIMER_PeriodElapsedCallback);
+  /* 开启定时器中断 周期1秒 用于连接状态检测 */
+  timer1.attach(1, TIMER_PeriodElapsedCallback);
 }
 
 
@@ -233,10 +219,10 @@ void loop()
   /* Blinker主函数 */
   Blinker.run();
   
-  /* 每2秒判断一次设备连接状态 */
+  /* 每1秒判断一次设备连接状态 */
   if(TimerFlag)
   {
-    Blinker.connected() ? digitalWrite(LED_BUILTIN, LOW) : digitalWrite(LED_BUILTIN, HIGH);
     TimerFlag = 0;
+    Blinker.connected() ? digitalWrite(LED_BUILTIN, LOW) : digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
   }
 }
